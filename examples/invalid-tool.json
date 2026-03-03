@@ -1,0 +1,23 @@
+{
+  "id": "invalid-workflow",
+  "name": "Workflow with Unknown Tool",
+  "nodes": [
+    {"id": "start", "type": "start", "config": {}},
+    {
+      "id": "agent-1",
+      "type": "agent",
+      "config": {
+        "model": "gpt-4o-mini",
+        "prompt": "Test",
+        "tools": ["unknown_tool"],
+        "memory": false
+      }
+    },
+    {"id": "end", "type": "end", "config": {}}
+  ],
+  "edges": [
+    {"source": "start", "target": "agent-1"},
+    {"source": "agent-1", "target": "end"}
+  ],
+  "inputs": {}
+}

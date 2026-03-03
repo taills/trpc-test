@@ -10,26 +10,29 @@ import (
 	"github.com/google/uuid"
 	"github.com/taills/trpc-test/backend/internal/dsl"
 	"github.com/taills/trpc-test/backend/internal/engine"
+	"github.com/taills/trpc-test/backend/internal/registry"
 	"github.com/taills/trpc-test/backend/internal/store"
 	"github.com/taills/trpc-test/backend/internal/toolreg"
 )
 
 type Handler struct {
-	mu           sync.RWMutex
-	workflows    map[string]*dsl.Workflow
-	runStore     *store.Store
-	execRegistry *engine.ExecutorRegistry
-	toolRegistry *toolreg.Registry
-	frontendDir  string
+	mu              sync.RWMutex
+	workflows       map[string]*dsl.Workflow
+	runStore        *store.Store
+	execRegistry    *engine.ExecutorRegistry
+	toolRegistry    *toolreg.Registry
+	dynamicRegistry *registry.DynamicRegistry
+	frontendDir     string
 }
 
-func NewHandler(runStore *store.Store, execRegistry *engine.ExecutorRegistry, toolRegistry *toolreg.Registry, frontendDir string) *Handler {
+func NewHandler(runStore *store.Store, execRegistry *engine.ExecutorRegistry, toolRegistry *toolreg.Registry, dynamicRegistry *registry.DynamicRegistry, frontendDir string) *Handler {
 	return &Handler{
-		workflows:    make(map[string]*dsl.Workflow),
-		runStore:     runStore,
-		execRegistry: execRegistry,
-		toolRegistry: toolRegistry,
-		frontendDir:  frontendDir,
+		workflows:       make(map[string]*dsl.Workflow),
+		runStore:        runStore,
+		execRegistry:    execRegistry,
+		toolRegistry:    toolRegistry,
+		dynamicRegistry: dynamicRegistry,
+		frontendDir:     frontendDir,
 	}
 }
 
@@ -71,6 +74,13 @@ func (h *Handler) createWorkflow(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "validation error: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// Dynamically register required tools and executors
+	if err := h.dynamicRegistry.RegisterFromWorkflow(&wf, h.toolRegistry, h.execRegistry); err != nil {
+		jsonError(w, "registration error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	h.mu.Lock()
 	h.workflows[wf.ID] = &wf
 	h.mu.Unlock()
