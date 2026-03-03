@@ -24,10 +24,9 @@ func TestSimpleStartEnd(t *testing.T) {
 		Edges:  []dsl.Edge{{Source: "start", Target: "end"}},
 		Inputs: map[string]interface{}{"key": "value"},
 	}
-	reg := ExecutorRegistry{
-		"start": &passthroughExec{},
-		"end":   &passthroughExec{},
-	}
+	reg := NewExecutorRegistry()
+	reg.Register("start", &passthroughExec{})
+	reg.Register("end", &passthroughExec{})
 	result, err := Run(context.Background(), w, reg)
 	if err != nil {
 		t.Fatal(err)
@@ -50,10 +49,9 @@ func TestOutputPropagation(t *testing.T) {
 		Edges:  []dsl.Edge{{Source: "start", Target: "end"}},
 		Inputs: map[string]interface{}{"msg": "hello"},
 	}
-	reg := ExecutorRegistry{
-		"start": &passthroughExec{},
-		"end":   &passthroughExec{},
-	}
+	reg := NewExecutorRegistry()
+	reg.Register("start", &passthroughExec{})
+	reg.Register("end", &passthroughExec{})
 	result, err := Run(context.Background(), w, reg)
 	if err != nil {
 		t.Fatal(err)

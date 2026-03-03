@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,9 +31,41 @@ type RunResult struct {
 	EndedAt     time.Time    `json:"ended_at"`
 }
 
-type ExecutorRegistry map[string]executors.Executor
+// ExecutorRegistry holds a mapping from node type names to their Executor
+// implementations. Use NewExecutorRegistry and Register to populate it.
+type ExecutorRegistry struct {
+	mu    sync.RWMutex
+	execs map[string]executors.Executor
+}
 
-func Run(ctx context.Context, w *dsl.Workflow, reg ExecutorRegistry) (*RunResult, error) {
+// NewExecutorRegistry creates an empty ExecutorRegistry.
+func NewExecutorRegistry() *ExecutorRegistry {
+	return &ExecutorRegistry{execs: make(map[string]executors.Executor)}
+}
+
+// Register adds or replaces the executor for the given node type.
+// nodeType must be non-empty and exec must not be nil.
+func (r *ExecutorRegistry) Register(nodeType string, exec executors.Executor) {
+	if nodeType == "" {
+		panic("engine: Register called with empty nodeType")
+	}
+	if exec == nil {
+		panic("engine: Register called with nil executor for type " + nodeType)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.execs[nodeType] = exec
+}
+
+// Get looks up an executor by node type.
+func (r *ExecutorRegistry) Get(nodeType string) (executors.Executor, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	exec, ok := r.execs[nodeType]
+	return exec, ok
+}
+
+func Run(ctx context.Context, w *dsl.Workflow, reg *ExecutorRegistry) (*RunResult, error) {
 	runID := uuid.New().String()
 	result := &RunResult{
 		RunID:      runID,
@@ -63,7 +96,7 @@ func Run(ctx context.Context, w *dsl.Workflow, reg ExecutorRegistry) (*RunResult
 
 	for _, nodeID := range order {
 		node := nodeMap[nodeID]
-		exec, ok := reg[node.Type]
+		exec, ok := reg.Get(node.Type)
 		if !ok {
 			return result, fmt.Errorf("no executor for node type %q", node.Type)
 		}

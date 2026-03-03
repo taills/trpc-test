@@ -18,12 +18,12 @@ type Handler struct {
 	mu           sync.RWMutex
 	workflows    map[string]*dsl.Workflow
 	runStore     *store.Store
-	execRegistry engine.ExecutorRegistry
+	execRegistry *engine.ExecutorRegistry
 	toolRegistry *toolreg.Registry
 	frontendDir  string
 }
 
-func NewHandler(runStore *store.Store, execRegistry engine.ExecutorRegistry, toolRegistry *toolreg.Registry, frontendDir string) *Handler {
+func NewHandler(runStore *store.Store, execRegistry *engine.ExecutorRegistry, toolRegistry *toolreg.Registry, frontendDir string) *Handler {
 	return &Handler{
 		workflows:    make(map[string]*dsl.Workflow),
 		runStore:     runStore,

@@ -20,13 +20,12 @@ func main() {
 	toolreg.RegisterHTTPGetTool(toolReg)
 
 	// Executor registry
-	execReg := engine.ExecutorRegistry{
-		"start": &executors.StartExecutor{},
-		"end":   &executors.EndExecutor{},
-		"agent": &executors.AgentExecutor{ToolRegistry: toolReg},
-		"http":  &executors.HTTPNodeExecutor{},
-		"echo":  &executors.StartExecutor{}, // echo node just passes through
-	}
+	execReg := engine.NewExecutorRegistry()
+	execReg.Register("start", &executors.StartExecutor{})
+	execReg.Register("end", &executors.EndExecutor{})
+	execReg.Register("agent", &executors.AgentExecutor{ToolRegistry: toolReg})
+	execReg.Register("http", &executors.HTTPNodeExecutor{})
+	execReg.Register("echo", &executors.StartExecutor{}) // echo node just passes through
 
 	// Run store
 	runStore := store.New("")
