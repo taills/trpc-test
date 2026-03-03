@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workflow Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; color: #cdd6f4; height: 100vh; display: flex; flex-direction: column; }
+    header { background: #181825; padding: 12px 20px; border-bottom: 1px solid #313244; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.2rem; color: #cba6f7; }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .panel { display: flex; flex-direction: column; padding: 12px; overflow: hidden; }
+    .panel-title { font-size: 0.85rem; font-weight: 600; color: #a6e3a1; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    /* Left panel */
+    .panel-left { width: 220px; border-right: 1px solid #313244; }
+    #workflow-list { list-style: none; overflow-y: auto; flex: 1; }
+    #workflow-list li { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-bottom: 4px; background: #313244; transition: background 0.15s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #workflow-list li:hover { background: #45475a; }
+    #workflow-list li.active { background: #cba6f7; color: #1e1e2e; }
+    /* Middle panel */
+    .panel-middle { flex: 1; border-right: 1px solid #313244; }
+    #editor { flex: 1; background: #181825; color: #cdd6f4; border: 1px solid #313244; border-radius: 6px; padding: 10px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.8rem; resize: none; width: 100%; }
+    .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+    button { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: opacity 0.15s; }
+    button:hover { opacity: 0.85; }
+    #btn-save { background: #89b4fa; color: #1e1e2e; }
+    #btn-run { background: #a6e3a1; color: #1e1e2e; }
+    #btn-load-demo { background: #fab387; color: #1e1e2e; }
+    /* Right panel */
+    .panel-right { width: 380px; }
+    #run-results { overflow-y: auto; flex: 1; }
+    .run-card { background: #313244; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .run-card h3 { font-size: 0.8rem; color: #89b4fa; margin-bottom: 6px; word-break: break-all; }
+    .run-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-bottom: 6px; }
+    .status-success { background: #a6e3a1; color: #1e1e2e; }
+    .status-error { background: #f38ba8; color: #1e1e2e; }
+    .status-running { background: #fab387; color: #1e1e2e; }
+    .node-results { margin-top: 6px; }
+    .node-result { background: #1e1e2e; border-radius: 6px; padding: 8px; margin-bottom: 6px; }
+    .node-result h4 { font-size: 0.78rem; color: #cba6f7; margin-bottom: 4px; }
+    .node-result pre { font-size: 0.72rem; white-space: pre-wrap; word-break: break-all; color: #bac2de; max-height: 120px; overflow-y: auto; }
+    .log-line { color: #a6e3a1; font-size: 0.72rem; }
+    #status-bar { padding: 6px 20px; background: #181825; border-top: 1px solid #313244; font-size: 0.78rem; color: #6c7086; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙ Workflow Demo</h1>
+    <span style="color:#6c7086;font-size:0.8rem;">tRPC-Test Monolithic Workflow Engine</span>
+  </header>
+  <div class="main">
+    <!-- Left: Workflow List -->
+    <div class="panel panel-left">
+      <div class="panel-title">Workflows</div>
+      <ul id="workflow-list"></ul>
+      <button id="btn-refresh-wf" style="margin-top:8px;background:#585b70;color:#cdd6f4;" onclick="loadWorkflows()">↻ Refresh</button>
+    </div>
+
+    <!-- Middle: Editor -->
+    <div class="panel panel-middle">
+      <div class="panel-title">Workflow JSON Editor</div>
+      <textarea id="editor" spellcheck="false" rows="28"></textarea>
+      <div class="btn-row">
+        <button id="btn-load-demo" onclick="loadDemo()">Load Demo</button>
+        <button id="btn-save" onclick="saveWorkflow()">💾 Save</button>
+        <button id="btn-run" onclick="runWorkflow()">▶ Run</button>
+      </div>
+    </div>
+
+    <!-- Right: Run Results -->
+    <div class="panel panel-right">
+      <div class="panel-title">Run Results</div>
+      <div id="run-results"></div>
+    </div>
+  </div>
+  <div id="status-bar">Ready.</div>
+
+  <script>
+    const DEMO = {
+      "id": "demo-workflow",
+      "name": "Demo: Start → Agent(ReAct+Tool) → End",
+      "nodes": [
+        {"id": "start", "type": "start", "config": {}},
+        {
+          "id": "agent-1",
+          "type": "agent",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a helpful assistant. When asked to echo something, use the echo tool.",
+            "tools": ["echo", "http_get"],
+            "memory": true
+          }
+        },
+        {"id": "end", "type": "end", "config": {}}
+      ],
+      "edges": [
+        {"source": "start", "target": "agent-1"},
+        {"source": "agent-1", "target": "end"}
+      ],
+      "inputs": {
+        "message": "Please echo the message: Hello World"
+      }
+    };
+
+    let currentWorkflowId = null;
+    let pollIntervals = {};
+
+    function setStatus(msg) {
+      document.getElementById('status-bar').textContent = msg;
+    }
+
+    function loadDemo() {
+      document.getElementById('editor').value = JSON.stringify(DEMO, null, 2);
+      currentWorkflowId = null;
+      setStatus('Demo workflow loaded into editor.');
+    }
+
+    async function loadWorkflows() {
+      try {
+        const res = await fetch('/api/workflows');
+        const list = await res.json();
+        const ul = document.getElementById('workflow-list');
+        ul.innerHTML = '';
+        (list || []).forEach(wf => {
+          const li = document.createElement('li');
+          li.textContent = wf.name || wf.id;
+          li.title = wf.id;
+          li.dataset.id = wf.id;
+          if (wf.id === currentWorkflowId) li.classList.add('active');
+          li.onclick = () => {
+            currentWorkflowId = wf.id;
+            document.querySelectorAll('#workflow-list li').forEach(x => x.classList.remove('active'));
+            li.classList.add('active');
+            document.getElementById('editor').value = JSON.stringify(wf, null, 2);
+            setStatus('Loaded workflow: ' + wf.id);
+          };
+          ul.appendChild(li);
+        });
+      } catch(e) {
+        setStatus('Error loading workflows: ' + e.message);
+      }
+    }
+
+    async function saveWorkflow() {
+      let wf;
+      try {
+        wf = JSON.parse(document.getElementById('editor').value);
+      } catch(e) {
+        setStatus('JSON parse error: ' + e.message);
+        return;
+      }
+      try {
+        const res = await fetch('/api/workflows', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(wf)
+        });
+        const data = await res.json();
+        if (data.error) {
+          setStatus('Save error: ' + data.error);
+          return;
+        }
+        currentWorkflowId = data.id;
+        setStatus('Saved workflow: ' + data.id);
+        loadWorkflows();
+      } catch(e) {
+        setStatus('Save failed: ' + e.message);
+      }
+    }
+
+    async function runWorkflow() {
+      if (!currentWorkflowId) {
+        // Try to save first
+        await saveWorkflow();
+        if (!currentWorkflowId) {
+          setStatus('Save the workflow first before running.');
+          return;
+        }
+      }
+      setStatus('Running workflow ' + currentWorkflowId + '...');
+      try {
+        const res = await fetch('/api/workflows/' + currentWorkflowId + '/run', {method: 'POST'});
+        const data = await res.json();
+        if (data.error) {
+          setStatus('Run error: ' + data.error);
+          return;
+        }
+        setStatus('Run started: ' + data.run_id + ' [' + data.status + ']');
+        pollRun(data.run_id);
+      } catch(e) {
+        setStatus('Run failed: ' + e.message);
+      }
+    }
+
+    async function pollRun(runId) {
+      if (pollIntervals[runId]) clearInterval(pollIntervals[runId]);
+      const check = async () => {
+        try {
+          const res = await fetch('/api/runs/' + runId);
+          const data = await res.json();
+          renderRunResult(data);
+          if (data.status !== 'running') {
+            clearInterval(pollIntervals[runId]);
+            delete pollIntervals[runId];
+          }
+        } catch(e) {
+            console.error('Poll error for run ' + runId + ':', e);
+          }
+      };
+      await check();
+      pollIntervals[runId] = setInterval(check, 2000);
+    }
+
+    function renderRunResult(run) {
+      const container = document.getElementById('run-results');
+      let card = document.getElementById('run-' + run.run_id);
+      if (!card) {
+        card = document.createElement('div');
+        card.id = 'run-' + run.run_id;
+        card.className = 'run-card';
+        container.insertBefore(card, container.firstChild);
+      }
+      const statusClass = run.status === 'success' ? 'status-success' : run.status === 'error' ? 'status-error' : 'status-running';
+      let html = `<h3>Run: ${run.run_id.slice(0,8)}… (${run.workflow_id})</h3>
+        <span class="run-status ${statusClass}">${run.status}</span>
+        <div class="node-results">`;
+      (run.node_results || []).forEach(nr => {
+        const ns = nr.status === 'success' ? 'status-success' : nr.status === 'error' ? 'status-error' : 'status-running';
+        html += `<div class="node-result">
+          <h4>${nr.node_id} <span class="run-status ${ns}" style="font-size:0.68rem;">${nr.status}</span></h4>`;
+        if (nr.logs && nr.logs.length) {
+          html += '<div>' + nr.logs.map(l => `<div class="log-line">» ${escHtml(l)}</div>`).join('') + '</div>';
+        }
+        if (nr.outputs && Object.keys(nr.outputs).length) {
+          html += `<pre>${escHtml(JSON.stringify(nr.outputs, null, 2))}</pre>`;
+        }
+        if (nr.error) {
+          html += `<pre style="color:#f38ba8;">${escHtml(nr.error)}</pre>`;
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+      card.innerHTML = html;
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Init
+    loadDemo();
+    loadWorkflows();
+  </script>
+</body>
+</html>

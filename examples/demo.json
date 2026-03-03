@@ -1,0 +1,25 @@
+{
+  "id": "demo-workflow",
+  "name": "Demo: Start → Agent(ReAct+Tool) → End",
+  "nodes": [
+    {"id": "start", "type": "start", "config": {}},
+    {
+      "id": "agent-1",
+      "type": "agent",
+      "config": {
+        "model": "gpt-4o-mini",
+        "prompt": "You are a helpful assistant. When asked to echo something, use the echo tool.",
+        "tools": ["echo", "http_get"],
+        "memory": true
+      }
+    },
+    {"id": "end", "type": "end", "config": {}}
+  ],
+  "edges": [
+    {"source": "start", "target": "agent-1"},
+    {"source": "agent-1", "target": "end"}
+  ],
+  "inputs": {
+    "message": "Please echo the message: Hello World"
+  }
+}
