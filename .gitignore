@@ -1,0 +1,6 @@
+backend/bin/
+*.exe
+*.test
+*.out
+vendor/
+.env
