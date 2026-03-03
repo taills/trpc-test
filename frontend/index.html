@@ -81,25 +81,42 @@
       "id": "demo-workflow",
       "name": "Demo: Start → Agent(ReAct+Tool) → End",
       "nodes": [
-        {"id": "start", "type": "start", "config": {}},
+        {
+          "id": "start",
+          "type": "start",
+          "config": {}
+        },
         {
           "id": "agent-1",
           "type": "agent",
           "config": {
-            "model": "gpt-4o-mini",
+            "model": "Qwen3-Next-80B-A3B:FP8",
             "prompt": "You are a helpful assistant. When asked to echo something, use the echo tool.",
-            "tools": ["echo", "http_get"],
+            "tools": [
+              "echo",
+              "http_get"
+            ],
             "memory": true
           }
         },
-        {"id": "end", "type": "end", "config": {}}
+        {
+          "id": "end",
+          "type": "end",
+          "config": {}
+        }
       ],
       "edges": [
-        {"source": "start", "target": "agent-1"},
-        {"source": "agent-1", "target": "end"}
+        {
+          "source": "start",
+          "target": "agent-1"
+        },
+        {
+          "source": "agent-1",
+          "target": "end"
+        }
       ],
       "inputs": {
-        "message": "Please echo the message: Hello World"
+        "message": "总结这个网站的内容 https://github.com/upstash/context7/blob/master/i18n/README.zh-TW.md"
       }
     };
 
