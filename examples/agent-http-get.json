@@ -1,0 +1,25 @@
+{
+  "id": "agent-http-get",
+  "name": "Agent with HTTP Get Tool",
+  "nodes": [
+    {"id": "start", "type": "start", "config": {}},
+    {
+      "id": "agent-1",
+      "type": "agent",
+      "config": {
+        "model": "gpt-4o-mini",
+        "prompt": "You are a helpful assistant. When asked to fetch a URL, use the http_get tool.",
+        "tools": ["http_get"],
+        "memory": true
+      }
+    },
+    {"id": "end", "type": "end", "config": {}}
+  ],
+  "edges": [
+    {"source": "start", "target": "agent-1"},
+    {"source": "agent-1", "target": "end"}
+  ],
+  "inputs": {
+    "message": "Please fetch https://api.github.com/zen"
+  }
+}

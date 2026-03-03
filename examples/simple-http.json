@@ -1,0 +1,21 @@
+{
+  "id": "simple-http",
+  "name": "Simple HTTP Workflow",
+  "nodes": [
+    {"id": "start", "type": "start", "config": {}},
+    {
+      "id": "http-1",
+      "type": "http",
+      "config": {
+        "method": "GET",
+        "url": "https://api.github.com/zen"
+      }
+    },
+    {"id": "end", "type": "end", "config": {}}
+  ],
+  "edges": [
+    {"source": "start", "target": "http-1"},
+    {"source": "http-1", "target": "end"}
+  ],
+  "inputs": {}
+}
