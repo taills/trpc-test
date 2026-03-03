@@ -205,8 +205,8 @@
             delete pollIntervals[runId];
           }
         } catch(e) {
-            console.error('Poll error for run ' + runId + ':', e);
-          }
+          console.error('Poll error for run ' + runId + ':', e);
+        }
       };
       await check();
       pollIntervals[runId] = setInterval(check, 2000);
